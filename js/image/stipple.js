@@ -1,30 +1,47 @@
 // Weighted Voronoi stippling (Secord, 2002). Points are first scattered in
-// proportion to the image's ink, then Lloyd-relaxed: each point moves to the
-// ink-weighted centre of the pixels nearest to it. The result is an organic,
-// evenly-jittered spread that's denser where the image is darker, with no
-// halftone grid. Runs in a worker (stipple-worker.js) or on the main thread.
+// proportion to a placement weight, then Lloyd-relaxed: each point moves to
+// the weighted centre of the pixels nearest to it. The result is an organic,
+// evenly-jittered spread with no halftone grid. Runs in a worker
+// (stipple-worker.js) or on the main thread.
+//
+// `uniformity` sets how much the layout follows the image: 0 packs points by
+// ink alone (classic stippling: tone shown by density); higher values spread
+// them more evenly over the inked area, which is what the organic halftone
+// wants (tone shown by circle size instead).
 
 import { createRng } from '../rng.js';
 
-// Returns Float32Array [u, v, rho] per point: position in 0–1 image space
-// and the ink density under the point.
-export function stipple(density, w, h, n, { seed = 1, iterations = defaultIterations(n) } = {}) {
+export const STRIDE = 4;
+
+// Returns Float32Array [u, v, ink, area] per point: position in 0–1 image
+// space, the ink under the point, and the area of its Voronoi cell in
+// density-map pixels (how much room it has, used to size halftone dots).
+// `onProgress(points)` receives an early, partly relaxed layout.
+export function stipple(density, w, h, n, { seed = 1, uniformity = 0, iterations = defaultIterations(n), onProgress = null } = {}) {
   const rng = createRng(seed);
   const size = w * h;
-  const cdf = new Float64Array(size);
+  const weights = new Float32Array(size);
   let total = 0;
   for (let i = 0; i < size; i++) {
-    total += density[i];
-    cdf[i] = total;
+    const ink = density[i];
+    weights[i] = ink > 0 ? uniformity + (1 - uniformity) * ink : 0;
+    total += weights[i];
   }
-  const weights = total > 0 ? density : new Float32Array(size).fill(1);
-  if (total <= 0) for (let i = 0; i < size; i++) cdf[i] = i + 1;
-  const mass = total > 0 ? total : size;
+  if (total <= 0) {
+    weights.fill(1);
+    total = size;
+  }
+  const cdf = new Float64Array(size);
+  let running = 0;
+  for (let i = 0; i < size; i++) {
+    running += weights[i];
+    cdf[i] = running;
+  }
 
   const xs = new Float64Array(n);
   const ys = new Float64Array(n);
   const sample = (i) => {
-    const idx = search(cdf, rng.next() * mass);
+    const idx = search(cdf, rng.next() * total);
     xs[i] = (idx % w) + rng.next();
     ys[i] = Math.floor(idx / w) + rng.next();
   };
@@ -34,12 +51,15 @@ export function stipple(density, w, h, n, { seed = 1, iterations = defaultIterat
   const sx = new Float64Array(n);
   const sy = new Float64Array(n);
   const sw = new Float64Array(n);
+  const area = new Float64Array(n);
+  const early = Math.min(6, iterations - 1);
 
   for (let iter = 0; iter < iterations; iter++) {
     grid.build(xs, ys, n);
     sx.fill(0);
     sy.fill(0);
     sw.fill(0);
+    area.fill(0);
     let hint = 0;
     for (let y = 0; y < h; y++) {
       const py = y + 0.5;
@@ -51,6 +71,7 @@ export function stipple(density, w, h, n, { seed = 1, iterations = defaultIterat
         sx[hint] += d * px;
         sy[hint] += d * py;
         sw[hint] += d;
+        area[hint] += 1;
       }
     }
     for (let i = 0; i < n; i++) {
@@ -61,19 +82,24 @@ export function stipple(density, w, h, n, { seed = 1, iterations = defaultIterat
         sample(i);
       }
     }
+    if (onProgress && iter === early) onProgress(pack(density, w, h, n, xs, ys, area));
   }
+  return pack(density, w, h, n, xs, ys, area);
+}
 
-  const out = new Float32Array(n * 3);
+function pack(density, w, h, n, xs, ys, area) {
+  const out = new Float32Array(n * STRIDE);
   for (let i = 0; i < n; i++) {
-    out[i * 3] = xs[i] / w;
-    out[i * 3 + 1] = ys[i] / h;
-    out[i * 3 + 2] = localDensity(density, w, h, xs[i], ys[i]);
+    out[i * STRIDE] = xs[i] / w;
+    out[i * STRIDE + 1] = ys[i] / h;
+    out[i * STRIDE + 2] = localDensity(density, w, h, xs[i], ys[i]);
+    out[i * STRIDE + 3] = area[i];
   }
   return out;
 }
 
 export function defaultIterations(n) {
-  return n < 500 ? 50 : n < 2000 ? 36 : 26;
+  return n < 500 ? 50 : n < 3000 ? 36 : 28;
 }
 
 function search(cdf, value) {

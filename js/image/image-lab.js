@@ -1,16 +1,26 @@
-// Image → circles. Holds the current source image, turns it into stipple
-// targets for the world, and recomputes when the detail (circle count),
-// contrast, cutoff or invert change. Dot size and sizing only rescale the existing
-// targets in place, so they respond instantly.
+// Image → circles. Holds the current source image, turns it into targets
+// for the world, and recomputes when the detail (circle count), method or
+// tone settings change. Dot size only rescales the existing targets in
+// place, so it responds instantly.
+//
+// Two methods:
+// - Halftone: circles spread evenly (organic, no grid) and their size
+//   follows the tone, so dark areas fill in and light areas shrink to
+//   specks. Reads like a photograph, like Brandmelder's halftone.
+// - Stipple: every circle the same size, packed densely where the image is
+//   dark. The RGD portrait look; needs a contrasty image and lots of circles.
 
 import { buildDensity } from './density.js';
-import { stipple } from './stipple.js';
+import { stipple, STRIDE } from './stipple.js';
 import { createSampleImage } from './sample.js';
+
+const UNIFORMITY = { halftone: 0.65, stipple: 0 };
+const MIN_INK = 0.01; // halftone circles fainter than this would be invisible
 
 export function createImageLab(settings, { onTargets, onBusy }) {
   let source = null;
   let sourceName = 'Sample: three cells';
-  let current = null; // { aspect, coverage, n, targets }
+  let current = null; // { aspect, coverage, n, method, w, targets }
   let worker = null;
   let jobId = 0;
   const jobs = new Map();
@@ -21,10 +31,13 @@ export function createImageLab(settings, { onTargets, onBusy }) {
     worker = new Worker(new URL('./stipple-worker.js', import.meta.url), { type: 'module' });
     worker.onmessage = (event) => {
       const job = jobs.get(event.data.id);
-      if (job) {
-        jobs.delete(event.data.id);
-        job.resolve(event.data.points);
+      if (!job) return;
+      if (!event.data.final) {
+        if (job.onEarly) job.onEarly(event.data.points);
+        return;
       }
+      jobs.delete(event.data.id);
+      job.resolve(event.data.points);
     };
     worker.onerror = () => {
       // Module workers can be unavailable (older browsers, some sandboxes).
@@ -41,41 +54,66 @@ export function createImageLab(settings, { onTargets, onBusy }) {
     return source;
   }
 
-  function runStipple(density, w, h, n, seed) {
-    if (!worker) return Promise.resolve(stipple(density, w, h, n, { seed }));
+  function runStipple(density, w, h, n, options, onEarly) {
+    const { seed, uniformity } = options;
+    if (!worker) return Promise.resolve(stipple(density, w, h, n, { seed, uniformity }));
     return new Promise((resolve) => {
       const id = ++jobId;
       const copy = density.slice();
-      jobs.set(id, { resolve, fallback: () => resolve(stipple(copy, w, h, n, { seed })) });
-      worker.postMessage({ id, density, w, h, n, seed }, [density.buffer]);
+      jobs.set(id, { resolve, onEarly, fallback: () => resolve(stipple(copy, w, h, n, { seed, uniformity })) });
+      worker.postMessage({ id, density, w, h, n, seed, uniformity }, [density.buffer]);
     });
   }
 
   // Targets for `n` circles from the current source. Used for live changes
-  // and, separately, for each step of a rendered image sequence.
-  async function compute(n) {
+  // and, separately, for each step of a rendered image sequence. `onEarly`
+  // receives a quick, partly relaxed result before the final one.
+  async function compute(n, onEarly = null) {
     const img = ensureSource();
-    const { contrast, cutoff, invert } = settings.image;
-    const map = buildDensity(img, n, { contrast, cutoff, invert });
-    const points = await runStipple(map.density, map.w, map.h, n, settings.seed);
-    const targets = [];
-    for (let i = 0; i < n; i++) {
-      targets.push({ u: points[i * 3], v: points[i * 3 + 1], rho: points[i * 3 + 2], rn: 0 });
-    }
-    const result = { aspect: map.aspect, coverage: map.coverage, n, targets };
-    applyRadii(result);
-    return result;
+    const { levels, contrast, midtones, cutoff, invert, method } = settings.image;
+    const map = buildDensity(img, n, { levels, contrast, midtones, cutoff, invert });
+    const meta = { aspect: map.aspect, coverage: map.coverage, n, method, w: map.w };
+    const toResult = (points) => {
+      const result = { ...meta, targets: toTargets(points, n, method) };
+      applyRadii(result);
+      return result;
+    };
+    const points = await runStipple(
+      map.density,
+      map.w,
+      map.h,
+      n,
+      { seed: settings.seed, uniformity: UNIFORMITY[method] ?? 0 },
+      onEarly ? (early) => onEarly(toResult(early)) : null,
+    );
+    return toResult(points);
   }
 
-  // Even sizing: circles just touch in the darkest areas (hexagonal packing
-  // of the inked area). By tone: darker areas get bigger circles.
+  function toTargets(points, n, method) {
+    const targets = [];
+    for (let i = 0; i < n; i++) {
+      const ink = points[i * STRIDE + 2];
+      if (method === 'halftone' && ink < MIN_INK) continue;
+      targets.push({ u: points[i * STRIDE], v: points[i * STRIDE + 1], rho: ink, area: points[i * STRIDE + 3], rn: 0 });
+    }
+    return targets;
+  }
+
+  // rn is the radius as a fraction of the image width.
   function applyRadii(result) {
-    const { dot, sizing } = settings.image;
-    const inkArea = Math.max(1e-4, result.coverage) * result.aspect;
-    const perCircle = inkArea / Math.max(1, result.n);
-    const even = 0.5 * Math.sqrt((2 * perCircle) / Math.sqrt(3));
-    for (const t of result.targets) {
-      t.rn = even * dot * (sizing === 'tone' ? 0.35 + 0.95 * t.rho : 1);
+    const { dot } = settings.image;
+    if (result.method === 'halftone') {
+      // Each circle gets the room of its own cell: full ink just overlaps its
+      // neighbours (solid darks), and the circle's area follows the tone.
+      for (const t of result.targets) {
+        const spacing = Math.sqrt((2 * Math.max(1, t.area)) / Math.sqrt(3));
+        t.rn = (0.55 * spacing * Math.sqrt(t.rho) * dot) / result.w;
+      }
+    } else {
+      // Even size: circles just touch in the darkest areas.
+      const inkArea = Math.max(1e-4, result.coverage) * result.aspect;
+      const even = 0.5 * Math.sqrt((2 * inkArea) / (Math.sqrt(3) * Math.max(1, result.n)));
+      for (const t of result.targets) t.rn = even * dot;
     }
   }
 
@@ -84,7 +122,9 @@ export function createImageLab(settings, { onTargets, onBusy }) {
     const id = ++refreshId;
     onBusy(true);
     try {
-      const result = await compute(n);
+      const result = await compute(n, (early) => {
+        if (id === refreshId) onTargets({ aspect: early.aspect, targets: early.targets });
+      });
       if (id !== refreshId) return;
       current = result;
       onTargets({ aspect: result.aspect, targets: result.targets });

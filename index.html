@@ -117,17 +117,22 @@
           <label for="image-detail">Detail</label><output id="image-detail-value"></output>
           <input class="range" id="image-detail" type="range" min="0" max="1000" step="1">
         </div>
+        <div class="segmented" role="radiogroup" aria-label="Method">
+          <label><input type="radio" name="image-method" value="halftone"><span>Halftone</span></label>
+          <label><input type="radio" name="image-method" value="stipple"><span>Stipple</span></label>
+        </div>
+        <p class="note" id="image-method-note"></p>
         <div class="field">
           <label for="image-dot">Dot size</label><output data-for="image.dot"></output>
           <input class="range" id="image-dot" type="range" min="0.3" max="1.6" step="0.01" data-setting="image.dot" data-format="times">
         </div>
-        <div class="segmented" role="radiogroup" aria-label="Dot sizing">
-          <label><input type="radio" name="image-sizing" value="even"><span>Even size</span></label>
-          <label><input type="radio" name="image-sizing" value="tone"><span>Size by tone</span></label>
-        </div>
         <div class="field">
           <label for="image-contrast">Contrast</label><output data-for="image.contrast"></output>
           <input class="range" id="image-contrast" type="range" min="-1" max="1" step="0.01" data-setting="image.contrast" data-format="signed">
+        </div>
+        <div class="field">
+          <label for="image-midtones">Midtones</label><output data-for="image.midtones"></output>
+          <input class="range" id="image-midtones" type="range" min="-1" max="1" step="0.01" data-setting="image.midtones" data-format="signed">
         </div>
         <div class="field">
           <label for="image-cutoff">Cutoff</label><output data-for="image.cutoff"></output>
@@ -138,6 +143,7 @@
           <input class="range" id="image-scale" type="range" min="0.2" max="1.6" step="0.01" data-setting="image.scale" data-format="pct">
         </div>
         <div class="checks">
+          <label class="check"><input id="image-levels" type="checkbox" data-setting="image.levels"><span>Auto levels (stretch the image to use every tone)</span></label>
           <label class="check"><input id="image-invert" type="checkbox" data-setting="image.invert"><span>Invert (circles on the light areas)</span></label>
           <label class="check"><input id="image-ghost" type="checkbox" data-setting="image.showSource"><span>Show source under the circles (preview only)</span></label>
         </div>

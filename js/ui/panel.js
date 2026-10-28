@@ -18,6 +18,11 @@ const DETAIL_SPAN = Math.log(LIMITS.imageCount.max / LIMITS.imageCount.min);
 const detailToCount = (v) => Math.round(LIMITS.imageCount.min * Math.exp((v / 1000) * DETAIL_SPAN));
 const countToDetail = (n) => Math.round((1000 * Math.log(n / LIMITS.imageCount.min)) / DETAIL_SPAN);
 
+const METHOD_NOTES = {
+  halftone: 'Circle size follows the tone on an organic layout. Most legible.',
+  stipple: 'Every circle the same size, packed where the image is dark. Best with lots of circles and a contrasty image.',
+};
+
 const $ = (id) => document.getElementById(id);
 
 function getPath(obj, path) {
@@ -72,9 +77,10 @@ export function bindPanel(settings, actions) {
     settings.style = v;
     actions.changed('style');
   });
-  radios('image-sizing', 'image.sizing', (v) => {
-    settings.image.sizing = v;
-    actions.changed('image.sizing');
+  radios('image-method', 'image.method', (v) => {
+    settings.image.method = v;
+    actions.changed('image.method');
+    sync();
   });
   radios('seq-step', 'sequence.step', (v) => {
     settings.sequence.step = v;
@@ -84,6 +90,10 @@ export function bindPanel(settings, actions) {
   const note = $('behaviour-note');
   syncers.push(() => {
     note.textContent = BEHAVIOURS[settings.behaviour].note;
+  });
+  const methodNote = $('image-method-note');
+  syncers.push(() => {
+    methodNote.textContent = METHOD_NOTES[settings.image.method] || '';
   });
 
   // --- colour swatches --------------------------------------------------------

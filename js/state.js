@@ -11,7 +11,7 @@ export function loadSettings() {
   const settings = structuredClone(DEFAULTS);
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) mergeKnown(settings, JSON.parse(raw));
+    if (raw) mergeKnown(settings, upgrade(JSON.parse(raw)));
   } catch {
     // Fall back to defaults.
   }
@@ -29,6 +29,14 @@ export function saveSettings(settings) {
       // Not persisted; the session still works.
     }
   }, 250);
+}
+
+// Image settings saved before the halftone method existed (they have
+// `sizing` instead of `method`) were tuned for even-sized dots and make the
+// halftone look weak, so they start fresh; everything else is kept.
+function upgrade(stored) {
+  if (stored && stored.image && !('method' in stored.image)) delete stored.image;
+  return stored;
 }
 
 // Copies values from `source` only where `target` already has a key of the

@@ -16,7 +16,7 @@ export const FRAME_PRESETS = [
 
 export const LIMITS = {
   count: { min: 1, max: 400, slider: 64 },
-  imageCount: { min: 10, max: 6000 },
+  imageCount: { min: 10, max: 12000 },
   frame: { min: 64, max: 7680 },
 };
 
@@ -47,10 +47,14 @@ export const DEFAULTS = {
   style: 'solid',
   anchor: { x: 0.5, y: 0.5 },
   image: {
-    count: 800,
-    dot: 0.9,
-    sizing: 'even',
-    contrast: 0.2,
+    count: 3000,
+    dot: 1,
+    // halftone: circle size follows tone on an organic layout (most legible)
+    // stipple: even circles, packed by tone (the RGD portrait look)
+    method: 'halftone',
+    levels: true,
+    contrast: 0.1,
+    midtones: 0,
     cutoff: 0.05,
     invert: false,
     scale: 0.9,

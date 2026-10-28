@@ -17,6 +17,8 @@ import { saveFile, prepareSaving, timestamp } from './export/save-file.js';
 import { videoSupported } from './export/video-writer.js';
 
 const $ = (id) => document.getElementById(id);
+// Image settings that change where circles go (the rest only resize them).
+const RESTIPPLE = new Set(['image.method', 'image.levels', 'image.contrast', 'image.midtones', 'image.cutoff', 'image.invert']);
 const clampInt = (v, min, max) => Math.min(max, Math.max(min, Math.round(v)));
 const even = (v) => clampInt(v, LIMITS.frame.min, LIMITS.frame.max) & ~1;
 
@@ -28,6 +30,7 @@ world.setCount(settings.count);
 
 const status = createStatus($('status'));
 let imageBusy = false;
+let imageStale = false; // image settings changed while another behaviour was showing
 let renderJob = null;
 
 const imageLab = createImageLab(settings, {
@@ -125,7 +128,8 @@ function setBehaviour(behaviour) {
   settings.behaviour = behaviour;
   if (behaviour === 'image') {
     const current = imageLab.current;
-    if (!current || current.n !== settings.image.count) imageLab.refresh();
+    if (!current || imageStale || current.n !== settings.image.count) imageLab.refresh();
+    imageStale = false;
   } else if (wasImage) {
     world.setCount(settings.count);
   }
@@ -270,10 +274,11 @@ const panel = bindPanel(settings, {
   shuffleColours: () => world.shuffleColours(),
   changed(path) {
     if (path === 'colours') world.clearColourLocks();
-    if (path === 'image.contrast' || path === 'image.cutoff' || path === 'image.invert') {
+    if (RESTIPPLE.has(path)) {
       if (settings.behaviour === 'image') imageLab.schedule();
+      else imageStale = true;
     }
-    if (path === 'image.dot' || path === 'image.sizing') imageLab.rescale();
+    if (path === 'image.dot') imageLab.rescale();
     if (path.startsWith('sequence')) syncSequenceSummary();
     persist();
   },
