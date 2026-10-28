@@ -101,6 +101,10 @@ body {
   cursor: crosshair;
 }
 
+.stage__canvas--gl {
+  pointer-events: none;
+}
+
 .stage__canvas.is-over-cell {
   cursor: grab;
 }

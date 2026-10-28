@@ -1,17 +1,50 @@
 // Division and fusion. Raising the count makes cells divide: a daughter is
-// born inside its parent, the pair stretches, pinches and separates. Lowering
-// it makes neighbours fuse: two cells drift together and one absorbs the
-// other. Only "mature" cells take part, so a big jump (1 → 22) cascades like
-// a chain reaction (1 → 2 → 4 → 8 …) instead of happening all at once.
+// born inside its parent and the pair springs apart, overshooting a little
+// before settling. Lowering it makes neighbours fuse: two cells snap
+// together, one slides under the other, and the survivor pops as it absorbs
+// it. Only "mature" cells take part, so a big jump (1 → 22) cascades like a
+// chain reaction (1 → 2 → 4 → 8 …) instead of happening all at once.
+//
+// Timing comes from world.genTime (see generationTime below): one step
+// (4 → 5) takes a comfortable beat, while a big jump squeezes every
+// generation so the whole cascade finishes in a second or two.
 
-import { lerp, easeInOut } from '../math.js';
+import { lerp } from '../math.js';
 import { mobility } from './contacts.js';
 import { splitGroup } from './image-targets.js';
 
-// Expected delay before an eligible cell starts dividing/fusing (~70 ms), so
-// simultaneous events stagger organically rather than firing on one frame.
-const START_RATE = 14;
-const BOND_STIFFNESS = 0.4;
+const BOND_STIFFNESS = 0.5;
+// Separation spring for a division: damping ratio (≈16% overshoot) and how
+// settled it is by the end of the bond.
+const SPRING_DAMPING = 0.5;
+const SPRING_SETTLE = 3.6;
+// Size kick a survivor gets when it absorbs a cell, as a fraction of its
+// radius per second.
+const ABSORB_POP = 2.2;
+
+// Seconds per cascade generation. `generations` is how many doublings (or
+// halvings) the change needs.
+export function generationTime(settings, generations) {
+  const single = lerp(0.8, 0.3, settings.tempo);
+  const budget = lerp(2.4, 0.8, settings.tempo);
+  return Math.min(single, budget / Math.max(1, generations));
+}
+
+// Generations needed to go from `from` cells to `to` cells.
+export function generationsBetween(from, to) {
+  const hi = Math.max(1, from, to);
+  const lo = Math.max(1, Math.min(from, to));
+  return Math.max(1, Math.ceil(Math.log2(hi / lo) - 1e-9));
+}
+
+// Step response of a damped spring (0 → 1 with a little overshoot), with
+// t running 0–1 over the bond.
+function springStep(t) {
+  const z = SPRING_DAMPING;
+  const w = SPRING_SETTLE / z;
+  const wd = w * Math.sqrt(1 - z * z);
+  return 1 - Math.exp(-z * w * t) * (Math.cos(wd * t) + ((z * w) / wd) * Math.sin(wd * t));
+}
 
 export function isIdle(world, cell) {
   return (
@@ -25,8 +58,14 @@ export function isIdle(world, cell) {
 }
 
 function maturity(world) {
-  const base = lerp(0.7, 0.15, world.settings.tempo) * world.rng.range(0.7, 1.35);
-  return world.imageActive ? base * 0.6 : base;
+  return world.genTime * 0.25 * world.rng.range(0.7, 1.3);
+}
+
+// Chance an eligible cell starts this step. The mean delay is a small part
+// of a generation, so simultaneous events stagger instead of firing on one
+// frame.
+function startChance(world, dt) {
+  return 1 - Math.exp(-dt / (0.12 * world.genTime));
 }
 
 export function scheduleLifecycle(world, dt) {
@@ -37,7 +76,7 @@ export function scheduleLifecycle(world, dt) {
 function scheduleCount(world, dt) {
   const diff = world.targetCount - world.liveCount;
   if (!diff) return;
-  const chance = 1 - Math.exp(-dt * START_RATE);
+  const chance = startChance(world, dt);
   const candidates = world.rng.shuffle(world.cells.filter((c) => isIdle(world, c)));
   let budget = Math.abs(diff);
   for (const cell of candidates) {
@@ -58,7 +97,7 @@ function scheduleCount(world, dt) {
 }
 
 function scheduleImage(world, dt) {
-  const chance = 1 - Math.exp(-dt * START_RATE * 1.5);
+  const chance = startChance(world, dt);
   const cells = world.cells;
   const n = cells.length;
   for (let i = 0; i < n; i++) {
@@ -109,13 +148,17 @@ export function divide(world, parent, angle = world.rng.range(0, Math.PI * 2)) {
   const uy = Math.sin(angle);
   const child = world.createCell(parent.x, parent.y, parent.r, parent.ci + 1);
   child.lock = parent.lock;
-  child.rgb = parent.rgb.slice();
   // A daughter of a different colour starts in that colour at once; the
   // scene draws it under its parent so it emerges rather than blends.
-  if (world.colourFor(child) !== world.colourFor(parent)) child.rgb = world.colourRgb(child);
+  if (world.colourFor(child) === world.colourFor(parent)) {
+    child.rgb = parent.rgb.slice();
+    child.hex = parent.hex;
+    child.easing = parent.easing;
+  }
   child.vx = parent.vx;
   child.vy = parent.vy;
   child.wander = parent.wander + Math.PI;
+  child.rv = parent.rv;
   const nudge = Math.max(0.5, parent.r * 0.02);
   parent.x -= ux * nudge;
   parent.y -= uy * nudge;
@@ -129,7 +172,7 @@ export function divide(world, parent, angle = world.rng.range(0, Math.PI * 2)) {
     t: 0,
     ux,
     uy,
-    duration: lerp(1.15, 0.4, world.settings.tempo) * world.rng.range(0.85, 1.2) * (world.imageActive ? 0.7 : 1),
+    duration: world.genTime * 0.75 * world.rng.range(0.9, 1.15),
   };
   parent.bond = bond;
   child.bond = bond;
@@ -139,12 +182,12 @@ export function divide(world, parent, angle = world.rng.range(0, Math.PI * 2)) {
   return child;
 }
 
-// `absorbed` is drawn into `survivor` and disappears once fully inside it.
+// `absorbed` snaps into `survivor` and disappears once fully inside it.
 // When `mutual`, both travel to meet halfway; otherwise the survivor mostly
 // keeps its own course (used when it already has a place in an image).
 export function fuse(world, survivor, absorbed, mutual) {
   const d0 = Math.hypot(absorbed.x - survivor.x, absorbed.y - survivor.y);
-  const travel = Math.min(4, d0 / Math.max(1, 2 * world.R));
+  const travel = Math.min(3, d0 / Math.max(1, 2 * world.R));
   const bond = {
     type: 'fuse',
     a: survivor,
@@ -152,7 +195,7 @@ export function fuse(world, survivor, absorbed, mutual) {
     t: 0,
     d0,
     mutual,
-    duration: lerp(1.2, 0.4, world.settings.tempo) * world.rng.range(0.85, 1.2) * (1 + 0.25 * travel),
+    duration: world.genTime * 0.7 * world.rng.range(0.9, 1.15) * (1 + 0.2 * travel),
   };
   absorbed.absorbed = true;
   absorbed.bond = bond;
@@ -176,7 +219,7 @@ export function advanceBonds(world, dt) {
         bond.ux = dx / d;
         bond.uy = dy / d;
       }
-      const rest = (a.r + b.r) * (1 + gap) * easeInOut(bond.t);
+      const rest = (a.r + b.r) * (1 + gap) * springStep(bond.t);
       const correction = (rest - d) * BOND_STIFFNESS;
       const ma = mobility(world, a);
       const mb = mobility(world, b);
@@ -200,7 +243,8 @@ export function advanceBonds(world, dt) {
         world.liveCount++;
         continue;
       }
-      const rest = bond.t >= 1 ? 0 : bond.d0 * (1 - easeInOut(bond.t));
+      // Accelerating pull, like two magnets snapping together.
+      const rest = bond.t >= 1 ? 0 : bond.d0 * (1 - Math.pow(bond.t, 2.5));
       if (d > rest && d > 1e-6) {
         const correction = (d - rest) * (bond.t >= 1 ? 0.3 : BOND_STIFFNESS);
         const wa = bond.mutual ? 0.5 * mobility(world, a) : 0.1;
@@ -212,6 +256,7 @@ export function advanceBonds(world, dt) {
       if (bond.t >= 1 && d <= Math.max(1, 0.12 * a.r)) {
         b.dead = true;
         world.anyDead = true;
+        a.rv += ABSORB_POP * a.r;
         a.absorbing--;
         if (!a.absorbing) a.readyAt = world.time + maturity(world);
         continue;

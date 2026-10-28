@@ -115,3 +115,25 @@ test('frame resize rescales positions', () => {
     assert.ok(c.x > -100 && c.x < 1180 && c.y > -100 && c.y < 2020, `cell outside resized frame: ${c.x},${c.y}`);
   }
 });
+
+test('cascades fit a short time budget at any size', async () => {
+  const { generationsBetween, generationTime } = await import('../js/sim/lifecycle.js');
+  assert.equal(generationsBetween(1, 2), 1);
+  assert.equal(generationsBetween(5, 6), 1);
+  assert.equal(generationsBetween(1, 22), 5);
+  assert.equal(generationsBetween(22, 1), 5);
+  const s = settingsWith();
+  // One generation per step for small changes, squeezed for big jumps.
+  assert.ok(generationTime(s, 1) > generationTime(s, 10));
+  assert.ok(generationTime(s, 10) * 10 <= 2.4);
+
+  const world = new World(settingsWith({ behaviour: 'fuse', count: 1, life: 0 }));
+  world.setCount(64);
+  assert.ok(runUntilSettled(world, 10) < 3, 'fuse 1 → 64 took too long');
+
+  const image = new World(settingsWith({ behaviour: 'image' }), { startCount: 3 });
+  const targets = Array.from({ length: 6000 }, (_, i) => ({ u: (i % 100) / 100, v: Math.floor(i / 100) / 60, rho: 1, rn: 0.003 }));
+  image.setImage({ aspect: 0.6, targets });
+  assert.ok(runUntilSettled(image, 10) < 3.5, 'image 3 → 6000 took too long');
+  assert.equal(image.cells.length, 6000);
+});

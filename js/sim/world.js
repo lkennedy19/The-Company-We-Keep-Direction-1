@@ -5,16 +5,19 @@
 // Units are frame pixels (e.g. 0–1920 × 0–1080) and seconds.
 
 import { createRng } from '../rng.js';
-import { hexToRgb, easeRgb } from '../colour.js';
+import { hexToRgb, easeRgb, rgbToHex } from '../colour.js';
 import { PALETTE } from '../config.js';
-import { TAU } from '../math.js';
+import { TAU, lerp } from '../math.js';
 import { SpatialGrid } from './spatial-grid.js';
 import { applyForces, disperseSpacing } from './forces.js';
 import { solveContacts } from './contacts.js';
-import { scheduleLifecycle, advanceBonds } from './lifecycle.js';
+import { scheduleLifecycle, advanceBonds, generationTime, generationsBetween } from './lifecycle.js';
 import { assignImageTargets } from './image-targets.js';
 
 const STEP = 1 / 60;
+// Radius spring: cells settle into a new size with a slight overshoot, so a
+// change in count reads as a springy breath rather than a slow ease.
+const RADIUS_DAMPING = 0.55;
 const MODES = ['fuse', 'disperse', 'magnet', 'image'];
 const rgbCache = new Map();
 
@@ -39,6 +42,7 @@ export class World {
     this.mode = settings.behaviour;
     this.weights = Object.fromEntries(MODES.map((m) => [m, m === this.mode ? 1 : 0]));
     this.targetCount = settings.count;
+    this.genTime = generationTime(settings, 1);
     this.image = null;
     this.imageActive = false;
     this.imageRect = { x: 0, y: 0, w: 1, h: 1 };
@@ -90,9 +94,12 @@ export class World {
       vx: 0,
       vy: 0,
       r,
+      rv: 0,
       ci,
       lock: null,
       rgb: null,
+      hex: '',
+      easing: false,
       jitter: this.rng.range(-1, 1),
       wander: this.rng.range(0, TAU),
       phase: this.rng.range(0, TAU),
@@ -106,7 +113,8 @@ export class World {
       goal: null,
       orphan: false,
     };
-    cell.rgb = cachedRgb(this.colourFor(cell)).slice();
+    cell.hex = this.colourFor(cell);
+    cell.rgb = cachedRgb(cell.hex).slice();
     return cell;
   }
 
@@ -127,6 +135,7 @@ export class World {
 
   setCount(n) {
     this.targetCount = Math.max(1, Math.round(n));
+    this.genTime = generationTime(this.settings, generationsBetween(this.countLive(), this.targetCount));
   }
 
   // `image` is { aspect, targets: [{ u, v, rho, rn }] } in normalised image
@@ -134,7 +143,13 @@ export class World {
   setImage(image) {
     this.image = image;
     this.updateImageRect();
-    if (this.mode === 'image') assignImageTargets(this, image.targets);
+    if (this.mode === 'image') this.retarget();
+  }
+
+  // Matches cells to the current image and sizes the cascade to it.
+  retarget() {
+    const generations = assignImageTargets(this, this.image.targets);
+    this.genTime = generationTime(this.settings, generations);
   }
 
   advance(dt) {
@@ -161,7 +176,7 @@ export class World {
     this.rebuildGrid();
     applyForces(this, dt);
     advanceBonds(this, dt);
-    this.solveContactsCarryingAbsorbed();
+    this.solveContactsCarryingAbsorbed(dt);
     if (this.anyDead) {
       this.cells = this.cells.filter((c) => !c.dead);
       this.anyDead = false;
@@ -171,12 +186,12 @@ export class World {
   // Contacts push a survivor around but skip the cell it is absorbing, so the
   // absorbed cell is carried by the same displacement. Only the fusion bond
   // changes the distance between them, which lets every fusion finish.
-  solveContactsCarryingAbsorbed() {
+  solveContactsCarryingAbsorbed(dt) {
     for (const c of this.cells) {
       c.qx = c.x;
       c.qy = c.y;
     }
-    solveContacts(this);
+    solveContacts(this, dt);
     for (const bond of this.bonds) {
       if (bond.type !== 'fuse') continue;
       bond.b.x += bond.a.x - bond.a.qx;
@@ -210,7 +225,7 @@ export class World {
       this.mode = next;
       if (next === 'image' && this.image) {
         this.updateImageRect();
-        assignImageTargets(this, this.image.targets);
+        this.retarget();
       } else if (leavingImage) {
         for (const c of this.cells) {
           c.target = null;
@@ -250,7 +265,9 @@ export class World {
 
   updateAppearance(dt) {
     const s = this.settings;
-    const radiusRate = 1 - Math.exp(-dt * (2.5 + 6 * s.tempo));
+    const omega = lerp(9, 18, s.tempo);
+    const stiffness = omega * omega;
+    const damping = 2 * RADIUS_DAMPING * omega;
     const colourRate = 1 - Math.exp(-dt * 5);
     const pulse = 0.03 * s.life;
     const rect = this.imageRect;
@@ -263,12 +280,22 @@ export class World {
       goal *= 1 + pulse * Math.sin(this.time * 1.9 + c.phase);
       const bond = c.bond;
       if (c.absorbed && bond) goal = Math.min(goal, bond.a.r * 0.92);
-      c.r += (goal - c.r) * radiusRate;
+      c.rv += (stiffness * (goal - c.r) - damping * c.rv) * dt;
+      c.r = Math.max(0, c.r + c.rv * dt);
       if (c.r > maxR) maxR = c.r;
 
       // Cells keep their own colour through divisions and fusions (no muddy
       // in-between mixes); only recolouring eases from one colour to another.
-      easeRgb(c.rgb, cachedRgb(this.colourFor(c)), colourRate);
+      // The hex string is only rebuilt while a colour is actually changing.
+      const targetHex = this.colourFor(c);
+      if (c.hex !== targetHex || c.easing) {
+        const target = cachedRgb(targetHex);
+        easeRgb(c.rgb, target, colourRate);
+        const settled = Math.abs(c.rgb[0] - target[0]) + Math.abs(c.rgb[1] - target[1]) + Math.abs(c.rgb[2] - target[2]) < 1.5;
+        if (settled) c.rgb = target.slice();
+        c.easing = !settled;
+        c.hex = settled ? targetHex : rgbToHex(c.rgb);
+      }
     }
     this.maxR = maxR;
   }

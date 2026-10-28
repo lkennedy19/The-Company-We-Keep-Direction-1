@@ -22,7 +22,7 @@ export function assignImageTargets(world, targets) {
     c.orphan = false;
   }
   const n = targets.length;
-  if (!n || !live.length) return;
+  if (!n || !live.length) return 1;
 
   const tx = new Float64Array(n);
   const ty = new Float64Array(n);
@@ -66,6 +66,12 @@ export function assignImageTargets(world, targets) {
   }
 
   for (const c of live) setGoal(c);
+
+  // Generations the cascade needs: how often the largest group must halve,
+  // or how often the cell count must halve to shed the orphans.
+  let largest = 1;
+  for (const c of live) if (c.pending) largest = Math.max(largest, c.pending.length + 1);
+  return n >= live.length ? Math.max(1, Math.ceil(Math.log2(largest))) : Math.max(1, Math.ceil(Math.log2(live.length / n)));
 }
 
 // Divides `cell` and shares its group of targets between the two halves.

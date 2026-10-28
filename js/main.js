@@ -371,7 +371,10 @@ function frame(now) {
     $('record-time').textContent = formatTime(recorder.seconds);
   } else {
     backlog = 0;
-    world.advance(dt);
+    // At most two simulation steps per displayed frame: if a frame runs
+    // long, the motion slows for a moment instead of piling up catch-up
+    // steps that make the next frame slower still.
+    world.advance(Math.min(dt, 1 / 30));
     sequence.update(world);
   }
   stage.draw();

@@ -48,7 +48,7 @@ export async function exportSequence({ settings, plan, imageLab, onProgress, sig
   world.advance(1);
 
   const writer = await createVideoWriter({ width: w, height: h, fps, quality: s.export.quality });
-  const frame = createFrameCanvas(w, h);
+  const frame = createFrameCanvas(w, h, { gpu: true });
   const total = Math.ceil(plan.duration * fps);
   let next = 1;
   try {

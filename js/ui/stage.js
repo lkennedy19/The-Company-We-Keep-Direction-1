@@ -5,11 +5,22 @@
 
 import { buildScene } from '../render/scene.js';
 import { drawScene } from '../render/canvas.js';
+import { createGlRenderer, glCanDraw } from '../render/webgl.js';
+import { glOptions } from '../render/preference.js';
 
 const DRAG_THRESHOLD = 4; // CSS px before a press counts as a drag
 
 export function createStage({ canvas, viewport, frameBox, world, settings, getGhost, onCellClick, onAnchorChange, onFile, onDropState }) {
   const ctx = canvas.getContext('2d');
+  // Solid-circle scenes draw on the GPU canvas underneath; the 2D canvas on
+  // top handles everything else and the anchor overlay.
+  const glCanvas = document.createElement('canvas');
+  glCanvas.className = 'stage__canvas stage__canvas--gl';
+  glCanvas.setAttribute('aria-hidden', 'true');
+  canvas.before(glCanvas);
+  const { enabled, allowSoftware } = glOptions();
+  const gl = enabled ? createGlRenderer(glCanvas, { allowSoftware }) : null;
+  let glShown = false;
   let dpr = 1;
   let cssW = 0;
   let cssH = 0;
@@ -23,6 +34,8 @@ export function createStage({ canvas, viewport, frameBox, world, settings, getGh
     dpr = Math.min(2, window.devicePixelRatio || 1);
     canvas.width = Math.max(1, Math.round(cssW * dpr));
     canvas.height = Math.max(1, Math.round(cssH * dpr));
+    glCanvas.width = canvas.width;
+    glCanvas.height = canvas.height;
   };
   new ResizeObserver(resize).observe(viewport);
   resize();
@@ -40,15 +53,27 @@ export function createStage({ canvas, viewport, frameBox, world, settings, getGh
   function draw() {
     updateFit();
     const { w, h } = settings.frame;
+    const scene = buildScene(world);
+    const ghost = getGhost();
+    const k = fit.scale * dpr;
+    const useGl = gl && !gl.lost && glCanDraw(scene, ghost);
+
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const k = fit.scale * dpr;
+    if (useGl) {
+      gl.draw(scene, { scale: k, offsetX: fit.x * dpr, offsetY: fit.y * dpr });
+      glShown = true;
+    } else if (glShown) {
+      gl.clear();
+      glShown = false;
+    }
+
     ctx.setTransform(k, 0, 0, k, fit.x * dpr, fit.y * dpr);
     ctx.save();
     ctx.beginPath();
     ctx.rect(0, 0, w, h);
     ctx.clip();
-    drawScene(ctx, buildScene(world), { ghost: getGhost() });
+    if (!useGl) drawScene(ctx, scene, { ghost });
     if (press && press.kind === 'anchor') drawAnchor(world.anchor(), Math.min(w, h));
     ctx.restore();
   }

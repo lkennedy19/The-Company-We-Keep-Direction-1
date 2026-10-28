@@ -3,11 +3,10 @@
 // always match.
 
 import { FRAME_BACKGROUND, PALETTE } from '../config.js';
-import { rgbToHex } from '../colour.js';
 import { smoothstep } from '../math.js';
 import { bridgeGeometry } from './bridge.js';
 
-// How far up each circle a neck attaches at its fullest (0–1).
+// How far up each circle a goo neck attaches at its fullest (0–1).
 const NECK = 0.5;
 
 export function buildScene(world) {
@@ -32,26 +31,12 @@ export function buildScene(world) {
 
   for (const c of world.cells) {
     if (c.dead || c.r < 0.05) continue;
-    const hex = rgbToHex(c.rgb);
+    const hex = c.hex;
     const solid = s.style === 'solid' || (s.style === 'mixed' && c === world.nucleus);
     const circle = { x: c.x, y: c.y, r: c.r, hex };
     if (solid) groupFor(hex, isUnder(world, c)).circles.push(circle);
     else dotted.push(circle);
     info.set(c, { hex, solid });
-  }
-
-  // Necks for same-coloured cells mid-division (thinning out as they
-  // separate) and mid-fusion (thickening as they meet). Cells of different
-  // colours slide over/under each other instead.
-  for (const bond of world.bonds) {
-    const a = info.get(bond.a);
-    const b = info.get(bond.b);
-    if (!a || !b || !a.solid || !b.solid) continue;
-    if (world.colourFor(bond.a) !== world.colourFor(bond.b)) continue;
-    const dividing = bond.type === 'divide';
-    const spread = dividing ? NECK * (1 - smoothstep(0.55, 1, bond.t)) : NECK * smoothstep(0, 0.45, bond.t);
-    const g = bridgeGeometry(bond.a.x, bond.a.y, bond.a.r, bond.b.x, bond.b.y, bond.b.r, spread);
-    if (g) groupFor(a.hex).bridges.push(g);
   }
 
   if (s.goo > 0.01) addRestingNecks(world, info, groupFor, s.goo);

@@ -14,7 +14,7 @@ const MAGNET_SWIRL = 0.1; // Magnet: tangential drift, × short side per s²
 const K_CENTER = 0.25; // Disperse: weak pull toward the anchor
 const K_REPEL = 18; // Disperse: soft-sphere push between neighbours
 const K_WALL = 30; // Disperse: keeps centres inside the padded frame
-const K_IMAGE = 28; // Image: spring toward each cell's target
+const K_IMAGE = 60; // Image: spring toward each cell's target
 const WANDER = 0.35; // Brownian drift, × short side per s², scaled by Life
 
 // The neighbour distance Disperse aims for: a little under hexagonal packing
@@ -104,7 +104,7 @@ export function applyForces(world, dt) {
 
   if (w.disperse > 1e-3) repel(world, dt, disperseSpacing(world), w.disperse);
 
-  const damping = 3.2 * (w.fuse + w.magnet) + 2.6 * w.disperse + 8 * w.image;
+  const damping = 3.2 * (w.fuse + w.magnet) + 2.6 * w.disperse + 11 * w.image;
   const decay = Math.exp(-damping * dt);
   const maxSpeed = 2.5 * minDim;
   for (const c of cells) {

@@ -40,7 +40,7 @@ export function createRecorder({ onChange }) {
         fps = settings.export.fps;
         const { w, h } = settings.frame;
         writer = await createVideoWriter({ width: w, height: h, fps, quality: settings.export.quality });
-        frame = createFrameCanvas(w, h);
+        frame = createFrameCanvas(w, h, { gpu: true });
         set('recording', { codec: writer.codec });
       } catch (err) {
         writer = null;
