@@ -1,0 +1,63 @@
+/* Circle Lab UI tokens.
+   Layout: the frame is the hero on a warm grey stage; controls sit in a
+   right-hand instrument panel (stacked below the stage on narrow screens).
+   The frame's own colours (#F2F2ED and the brand palette) are content, set
+   in js/config.js, and never follow the UI theme. */
+
+:root {
+  --stage: #e4e3dc;
+  --panel: #fafaf7;
+  --ink: #1d1c18;
+  --ink-soft: #66655c;
+  --line: #d5d4cb;
+  --control: #ecebe4;
+  --on-ink: #fafaf7;
+  --rec: #d6331f;
+  --frame-shadow: 0 1px 2px rgb(29 28 24 / 0.08), 0 12px 32px rgb(29 28 24 / 0.10);
+
+  --font-ui: "Instrument Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --text-xs: 0.6875rem;
+  --text-sm: 0.8125rem;
+  --text-md: 0.875rem;
+  --text-lg: 1.75rem;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+
+  --panel-width: 340px;
+  --radius-pill: 999px;
+  --radius-box: 8px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --stage: #131311;
+    --panel: #1b1b18;
+    --ink: #ecebe4;
+    --ink-soft: #9b9a90;
+    --line: #2f2e2a;
+    --control: #262622;
+    --on-ink: #1b1b18;
+    --rec: #ff5a40;
+    --frame-shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 12px 40px rgb(0 0 0 / 0.45);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --stage: #131311;
+  --panel: #1b1b18;
+  --ink: #ecebe4;
+  --ink-soft: #9b9a90;
+  --line: #2f2e2a;
+  --control: #262622;
+  --on-ink: #1b1b18;
+  --rec: #ff5a40;
+  --frame-shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 12px 40px rgb(0 0 0 / 0.45);
+  color-scheme: dark;
+}

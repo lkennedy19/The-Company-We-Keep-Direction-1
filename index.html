@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>TCWK Circle Lab</title>
+  <meta name="description" content="Motion and still studies for The Company We Keep: circles that divide, fuse and gather, exported as MP4, SVG and PNG.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/controls.css">
+  <script type="module" src="js/main.js"></script>
+</head>
+<body>
+  <div class="app" id="app">
+    <main class="stage" id="stage">
+      <header class="stage__bar">
+        <p class="brand"><span class="brand__name">The Company We Keep</span><span class="brand__tool">Circle Lab</span></p>
+        <p class="readout" id="readout">1920 × 1080 px</p>
+      </header>
+
+      <div class="stage__viewport" id="viewport">
+        <div class="stage__frame" id="frame-box" aria-hidden="true"></div>
+        <canvas class="stage__canvas" id="stage-canvas" role="img" aria-label="Frame preview"></canvas>
+        <p class="stage__drop" id="drop-hint" hidden>Drop the image to render it in circles</p>
+        <p class="stage__clean-hint" id="clean-hint" hidden>Clean view · press H or Esc to bring the controls back</p>
+      </div>
+
+      <footer class="transport" aria-label="Circle count and recording">
+        <div class="counter">
+          <button class="counter__step" id="count-down" type="button" aria-label="Fewer circles">−</button>
+          <output class="counter__value" id="count-value" for="count-slider" aria-live="polite">5</output>
+          <button class="counter__step" id="count-up" type="button" aria-label="More circles">+</button>
+          <span class="counter__label" id="count-label">circles</span>
+        </div>
+        <input class="range transport__slider" id="count-slider" type="range" min="1" max="64" step="1" value="5" aria-label="Circle count">
+        <div class="transport__actions">
+          <button class="btn btn--record" id="record-btn" type="button" aria-pressed="false">
+            <span class="btn--record__dot" aria-hidden="true"></span>
+            <span id="record-label">Record</span>
+            <span class="readout" id="record-time" hidden>00:00.0</span>
+          </button>
+          <button class="btn btn--quiet" id="clean-btn" type="button" title="Hide the controls (H)">Clean view</button>
+        </div>
+      </footer>
+    </main>
+
+    <aside class="panel" id="panel" aria-label="Controls">
+      <section class="panel__section" aria-labelledby="h-behaviour">
+        <h2 class="panel__title" id="h-behaviour">Behaviour</h2>
+        <div class="segmented segmented--4" role="radiogroup" aria-labelledby="h-behaviour">
+          <label><input type="radio" name="behaviour" value="fuse"><span>Fuse</span></label>
+          <label><input type="radio" name="behaviour" value="disperse"><span>Disperse</span></label>
+          <label><input type="radio" name="behaviour" value="magnet"><span>Magnet</span></label>
+          <label><input type="radio" name="behaviour" value="image"><span>Image</span></label>
+        </div>
+        <p class="note" id="behaviour-note"></p>
+      </section>
+
+      <section class="panel__section" aria-labelledby="h-colour">
+        <h2 class="panel__title" id="h-colour">Colour</h2>
+        <div class="swatches" id="swatches" role="group" aria-label="Colours in use"></div>
+        <div class="segmented" role="radiogroup" aria-label="Circle style">
+          <label><input type="radio" name="style" value="solid"><span>Solid</span></label>
+          <label><input type="radio" name="style" value="dotted"><span>Dotted</span></label>
+          <label><input type="radio" name="style" value="mixed"><span>One solid</span></label>
+        </div>
+        <div class="row">
+          <button class="btn" id="shuffle-btn" type="button">Shuffle colours</button>
+        </div>
+        <p class="note">Pick more than one colour to mix them. Click a circle on the stage to recolour it; drag a circle to move it, or drag empty space to move the centre.</p>
+      </section>
+
+      <section class="panel__section" aria-labelledby="h-circles">
+        <h2 class="panel__title" id="h-circles">Circles</h2>
+        <div class="field">
+          <label for="size">Size</label><output data-for="size"></output>
+          <input class="range" id="size" type="range" min="0.1" max="1.2" step="0.01" data-setting="size" data-format="pct">
+        </div>
+        <div class="field">
+          <label for="shrink">Shrink as they multiply</label><output data-for="shrink"></output>
+          <input class="range" id="shrink" type="range" min="0" max="1" step="0.01" data-setting="shrink" data-format="shrink">
+        </div>
+        <div class="field">
+          <label for="spacing">Spacing</label><output data-for="spacing"></output>
+          <input class="range" id="spacing" type="range" min="-0.5" max="1" step="0.01" data-setting="spacing" data-format="signed">
+        </div>
+        <div class="field">
+          <label for="variety">Size variety</label><output data-for="variety"></output>
+          <input class="range" id="variety" type="range" min="0" max="1" step="0.01" data-setting="variety" data-format="pct">
+        </div>
+        <div class="field">
+          <label for="life">Life</label><output data-for="life"></output>
+          <input class="range" id="life" type="range" min="0" max="1" step="0.01" data-setting="life" data-format="pct">
+        </div>
+        <div class="field">
+          <label for="goo">Goo</label><output data-for="goo"></output>
+          <input class="range" id="goo" type="range" min="0" max="1" step="0.01" data-setting="goo" data-format="pct">
+        </div>
+        <div class="field">
+          <label for="tempo">Tempo</label><output data-for="tempo"></output>
+          <input class="range" id="tempo" type="range" min="0" max="1" step="0.01" data-setting="tempo" data-format="pct">
+        </div>
+        <p class="note">Life adds drift and a slow pulse. Goo joins touching circles of the same colour. Tempo sets how fast cells divide and fuse.</p>
+      </section>
+
+      <section class="panel__section" aria-labelledby="h-image">
+        <h2 class="panel__title" id="h-image">Image</h2>
+        <div class="row">
+          <label class="btn" for="image-file">Upload image</label>
+          <input class="visually-hidden" id="image-file" type="file" accept="image/*">
+          <span class="note note--inline" id="image-name">Sample: three cells</span>
+        </div>
+        <div class="field">
+          <label for="image-detail">Detail</label><output id="image-detail-value"></output>
+          <input class="range" id="image-detail" type="range" min="0" max="1000" step="1">
+        </div>
+        <div class="field">
+          <label for="image-dot">Dot size</label><output data-for="image.dot"></output>
+          <input class="range" id="image-dot" type="range" min="0.3" max="1.6" step="0.01" data-setting="image.dot" data-format="times">
+        </div>
+        <div class="segmented" role="radiogroup" aria-label="Dot sizing">
+          <label><input type="radio" name="image-sizing" value="even"><span>Even size</span></label>
+          <label><input type="radio" name="image-sizing" value="tone"><span>Size by tone</span></label>
+        </div>
+        <div class="field">
+          <label for="image-contrast">Contrast</label><output data-for="image.contrast"></output>
+          <input class="range" id="image-contrast" type="range" min="-1" max="1" step="0.01" data-setting="image.contrast" data-format="signed">
+        </div>
+        <div class="field">
+          <label for="image-cutoff">Cutoff</label><output data-for="image.cutoff"></output>
+          <input class="range" id="image-cutoff" type="range" min="0" max="0.9" step="0.01" data-setting="image.cutoff" data-format="pct">
+        </div>
+        <div class="field">
+          <label for="image-scale">Scale</label><output data-for="image.scale"></output>
+          <input class="range" id="image-scale" type="range" min="0.2" max="1.6" step="0.01" data-setting="image.scale" data-format="pct">
+        </div>
+        <div class="checks">
+          <label class="check"><input id="image-invert" type="checkbox" data-setting="image.invert"><span>Invert (circles on the light areas)</span></label>
+          <label class="check"><input id="image-ghost" type="checkbox" data-setting="image.showSource"><span>Show source under the circles (preview only)</span></label>
+        </div>
+        <p class="note">Detail is the number of circles. Cutoff clears faint areas, such as a coloured background behind a logo. You can also drop an image onto the stage.</p>
+      </section>
+
+      <section class="panel__section" aria-labelledby="h-frame">
+        <h2 class="panel__title" id="h-frame">Frame</h2>
+        <div class="field field--stacked">
+          <label for="frame-preset">Size</label>
+          <select class="select" id="frame-preset"></select>
+        </div>
+        <div class="pair">
+          <label class="pair__item" for="frame-w"><span>W</span><input class="number" id="frame-w" type="number" min="64" max="7680" step="2"></label>
+          <label class="pair__item" for="frame-h"><span>H</span><input class="number" id="frame-h" type="number" min="64" max="7680" step="2"></label>
+        </div>
+        <p class="note">Background #F2F2ED. Sizes round to even pixels for video.</p>
+      </section>
+
+      <section class="panel__section" aria-labelledby="h-sequence">
+        <h2 class="panel__title" id="h-sequence">Sequence</h2>
+        <div class="pair">
+          <label class="pair__item" for="seq-from"><span>From</span><input class="number" id="seq-from" type="number" min="1" step="1"></label>
+          <label class="pair__item" for="seq-to"><span>To</span><input class="number" id="seq-to" type="number" min="1" step="1"></label>
+        </div>
+        <div class="segmented" role="radiogroup" aria-label="Step">
+          <label><input type="radio" name="seq-step" value="one"><span>+1 each step</span></label>
+          <label><input type="radio" name="seq-step" value="double"><span>×2 each step</span></label>
+        </div>
+        <div class="field">
+          <label for="seq-hold">Time per step</label><output data-for="sequence.hold"></output>
+          <input class="range" id="seq-hold" type="range" min="0.4" max="4" step="0.1" data-setting="sequence.hold" data-format="seconds">
+        </div>
+        <div class="checks">
+          <label class="check"><input id="seq-pingpong" type="checkbox" data-setting="sequence.pingpong"><span>Return to the start</span></label>
+        </div>
+        <p class="note" id="seq-summary"></p>
+        <div class="row">
+          <button class="btn" id="seq-play" type="button">Play on stage</button>
+          <button class="btn btn--primary" id="seq-export" type="button">Render MP4</button>
+        </div>
+        <div class="progress" id="seq-progress" hidden>
+          <progress id="seq-progress-bar" max="1" value="0"></progress>
+          <span class="readout" id="seq-progress-label">Rendering</span>
+          <button class="btn btn--quiet" id="seq-cancel" type="button">Cancel</button>
+        </div>
+      </section>
+
+      <section class="panel__section" aria-labelledby="h-export">
+        <h2 class="panel__title" id="h-export">Export</h2>
+        <div class="pair">
+          <label class="pair__item" for="export-fps"><span>Frame rate</span>
+            <select class="select" id="export-fps">
+              <option value="30">30 fps</option>
+              <option value="60">60 fps</option>
+            </select>
+          </label>
+          <label class="pair__item" for="export-quality"><span>Quality</span>
+            <select class="select" id="export-quality">
+              <option value="standard">Standard</option>
+              <option value="high">High</option>
+              <option value="max">Max</option>
+            </select>
+          </label>
+        </div>
+        <div class="row">
+          <button class="btn" id="export-svg" type="button">Save SVG</button>
+          <button class="btn" id="export-png" type="button">Save PNG</button>
+        </div>
+        <div class="checks">
+          <label class="check"><input id="export-transparent" type="checkbox" data-setting="export.transparent"><span>Transparent background for SVG and PNG</span></label>
+        </div>
+        <p class="note" id="video-support"></p>
+      </section>
+
+      <section class="panel__section" aria-labelledby="h-keys">
+        <h2 class="panel__title" id="h-keys">Keys</h2>
+        <dl class="keys">
+          <div><dt><kbd>↑</kbd> <kbd>↓</kbd></dt><dd>One circle more or fewer</dd></div>
+          <div><dt><kbd>Shift</kbd> + <kbd>↑</kbd></dt><dd>Five more (double in Image)</dd></div>
+          <div><dt><kbd>F</kbd> <kbd>D</kbd> <kbd>M</kbd> <kbd>I</kbd></dt><dd>Fuse, Disperse, Magnet, Image</dd></div>
+          <div><dt><kbd>R</kbd></dt><dd>Start or stop recording</dd></div>
+          <div><dt><kbd>Space</kbd></dt><dd>Play or stop the sequence</dd></div>
+          <div><dt><kbd>H</kbd></dt><dd>Clean view for screen capture</dd></div>
+        </dl>
+      </section>
+    </aside>
+  </div>
+
+  <div class="status" id="status" role="status" aria-live="polite" hidden></div>
+</body>
+</html>
