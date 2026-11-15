@@ -1,5 +1,6 @@
-// Serialises a scene to SVG. One layer per colour, named by its hex, so it
-// drops into Illustrator or Figma ready to recolour. Fused blobs are circles
+// Serialises a scene to SVG. One layer per colour, named by its hex
+// (fill-FF7537, outline-FF7537), so it drops into Illustrator or Figma ready
+// to recolour. Fused blobs are circles
 // plus neck paths sharing a fill; Pathfinder → Unite merges them into one
 // shape if needed.
 
@@ -15,13 +16,18 @@ export function sceneToSvg(scene, { transparent = false, title = '' } = {}) {
   if (title) out.push(`  <title>${escapeXml(title)}</title>`);
   if (!transparent) out.push(`  <rect id="background" width="${width}" height="${height}" fill="${scene.background}"/>`);
 
-  if (scene.dotted.length) {
-    out.push(
-      `  <g id="dotted" fill="none" stroke-width="${fmt(scene.dot.size)}" stroke-linecap="round">`,
-    );
-    for (const c of scene.dotted) {
+  // Outlines: every circle carries its own fill="none", stroke and
+  // stroke-width (not inherited from the group), so Figma and Illustrator
+  // import each one as an ellipse with an editable stroke.
+  const { width: strokeWidth, dotted, gap } = scene.stroke;
+  for (const group of scene.outlines) {
+    out.push(`  <g id="outline-${group.hex.slice(1)}">`);
+    for (const c of group.circles) {
+      const dots = dotted
+        ? ` stroke-linecap="round" stroke-dasharray="0 ${fmt(dotStep(c.r, gap))}"`
+        : '';
       out.push(
-        `    <circle cx="${fmt(c.x)}" cy="${fmt(c.y)}" r="${fmt(c.r)}" stroke="${c.hex}" stroke-dasharray="0 ${fmt(dotStep(c.r, scene.dot.gap))}"/>`,
+        `    <circle cx="${fmt(c.x)}" cy="${fmt(c.y)}" r="${fmt(c.r)}" fill="none" stroke="${group.hex}" stroke-width="${fmt(strokeWidth)}"${dots}/>`,
       );
     }
     out.push('  </g>');

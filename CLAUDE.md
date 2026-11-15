@@ -47,7 +47,7 @@ Before making **any** change to this codebase:
 │   │   ├── canvas.js         # Scene → 2D canvas (the reference renderer)
 │   │   ├── webgl.js          # Scene → WebGL2 instanced discs (solid-circle scenes; fast at 10k+)
 │   │   ├── preference.js     # ?renderer=gpu|2d override for troubleshooting
-│   │   └── svg.js            # Scene → SVG markup
+│   │   └── svg.js            # Scene → SVG markup (outlines: fill="none" + stroke + stroke-width on every circle, so Figma keeps them editable)
 │   ├── image/
 │   │   ├── image-lab.js      # Source image → stipple targets; re-stipples on changes
 │   │   ├── density.js        # Image → ink map (auto levels, contrast, midtones, cutoff, invert)
@@ -71,7 +71,8 @@ Before making **any** change to this codebase:
 │       └── mp4-muxer.mjs     # mp4-muxer 5.2.2 (MIT), vendored unmodified with its licence header
 └── tests/
     ├── sim.test.mjs          # Node tests: counts converge, cascades are fast, image targets match, resize
-    └── image.test.mjs        # Node tests: stipple vs halftone layouts
+    ├── image.test.mjs        # Node tests: stipple vs halftone layouts
+    └── render.test.mjs       # Node tests: outline/one-solid scenes and the SVG stroke markup
 ```
 
 ---
@@ -128,7 +129,8 @@ Before making **any** change to this codebase:
   shrink: 0.5,                      // radius ∝ count^-shrink (0 = constant size, 0.5 = area kept)
   spacing: 0, variety: 0, life: 0.35, goo: 0, tempo: 0.5,
   colours: ['#B58400'],             // subset of PALETTE, palette order, never empty
-  style: 'solid',                   // solid | dotted | mixed ("One solid": the nucleus solid, the rest dotted)
+  style: 'solid',                   // solid | outline | mixed ("One solid": the nucleus filled, the rest outlined)
+  stroke: { width: 2, pattern: 'line' }, // outline stroke in frame px (what Figma shows); pattern: line | dots
   anchor: { x: 0.5, y: 0.5 },       // normalised centre the cells gather around
   image: { count, dot, method: 'halftone' | 'stipple', levels, contrast, midtones, cutoff, invert, scale, showSource },
   sequence: { from, to, step: 'one' | 'double', hold, pingpong },
@@ -156,7 +158,7 @@ Before making **any** change to this codebase:
 - Behaviours never switch abruptly: `world.weights` eases toward the selected behaviour and every force is weighted by it.
 - While recording, the loop advances the world in fixed steps of exactly one video frame (`js/main.js`), so MP4s are smooth regardless of display refresh rate or machine speed. Outside recording, the loop takes at most two 1/60 s steps per displayed frame, so a slow frame can't snowball.
 
-**Rendering:** `scene.js` builds one drawable description per frame. Scenes made only of solid circles (no dotted circles, Goo or source ghost) are drawn by `webgl.js` (instanced anti-aliased discs) on the stage and in video frames; everything else, and every PNG and SVG, goes through `canvas.js`/`svg.js`. `webgl.js` refuses software-emulated WebGL (it's slower than 2D there). If the two ever disagree visually, `canvas.js` is the reference; `?renderer=2d` or `?renderer=gpu` in the URL forces a path.
+**Rendering:** `scene.js` builds one drawable description per frame: `groups` (fills, one per colour) and `outlines` (strokes, one per colour, drawn under the fills) plus `stroke: { width, dotted, gap }`. Scenes made only of solid circles (no outlines, Goo or source ghost) are drawn by `webgl.js` (instanced anti-aliased discs) on the stage and in video frames; everything else, and every PNG and SVG, goes through `canvas.js`/`svg.js`. `webgl.js` refuses software-emulated WebGL (it's slower than 2D there). If the two ever disagree visually, `canvas.js` is the reference; `?renderer=2d` or `?renderer=gpu` in the URL forces a path.
 
 ---
 

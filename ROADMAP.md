@@ -23,6 +23,12 @@ A browser tool for exploring the identity as a system of circles "under a micros
 - 🟡 Spring motion: divisions and fusions read as gloopy. Replace the metaball necks with a springy, scientific motion: cells spring apart with a little overshoot and snap together.
 - 🟡 Fast big jumps: going from a few circles to thousands takes too long and stutters. Cascades should finish in about a second or two at any size, and the frame rate should hold up with thousands of circles.
 
+### Round 3 feedback (Nov 2026): finishing for slide work 🟡
+
+- 🟡 Outlined circles: the outline style draws a continuous line, not dots (dotted stays as a line option). Stroke width is adjustable, and the SVG export writes real strokes (`fill="none"`, `stroke`, `stroke-width` on each circle) so they stay editable in Figma.
+- 🟡 Brand palette: replace the three colours with the 13 exact hex values from the D1 Colour Palette sheet (neutrals, tints, accents).
+- 🟡 Long image filenames: truncate the uploaded file's name so it never widens the controls panel or forces a horizontal scroll.
+
 ## Phase 2 — Concept studies ⬜
 
 Proposals from the RGD Branding Awards reference (Rethink): what that system does with the ® symbol that Circle Lab can't do yet with circles. Not started; Liam to pick which matter.

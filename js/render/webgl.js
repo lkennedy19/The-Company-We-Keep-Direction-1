@@ -1,7 +1,7 @@
 // GPU renderer for scenes made only of solid circles (the common case, and
 // the heavy one: Image mode with thousands of circles). Each circle is one
 // instanced quad shaded as an anti-aliased disc, so 12,000 circles cost
-// about the same as 12. Scenes with dotted circles, goo necks or the source
+// about the same as 12. Scenes with outlined circles, goo necks or the source
 // image ghost fall back to the 2D renderer (js/render/canvas.js), which
 // remains the reference for how everything should look.
 
@@ -40,7 +40,7 @@ void main() {
 
 // True when the GPU path can draw this scene exactly.
 export function glCanDraw(scene, ghost) {
-  if (ghost || scene.dotted.length) return false;
+  if (ghost || scene.outlines.length) return false;
   for (const group of scene.groups) if (group.bridges.length || group.pores.length) return false;
   return true;
 }

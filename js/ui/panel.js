@@ -11,6 +11,7 @@ const FORMATS = {
   times: (v) => `×${v.toFixed(2)}`,
   seconds: (v) => `${v.toFixed(1)} s`,
   shrink: (v) => (v < 0.005 ? 'Off' : Math.abs(v - 0.5) < 0.005 ? 'Area kept' : v.toFixed(2)),
+  px: (v) => `${Number(v.toFixed(2))} px`,
 };
 
 // Image detail slider runs on a log scale: 0 → 10 circles, 1000 → 6000.
@@ -76,6 +77,16 @@ export function bindPanel(settings, actions) {
   radios('style', 'style', (v) => {
     settings.style = v;
     actions.changed('style');
+    sync();
+  });
+  radios('stroke-pattern', 'stroke.pattern', (v) => {
+    settings.stroke.pattern = v;
+    actions.changed('stroke.pattern');
+  });
+  // Stroke controls only matter once some circles are outlined.
+  const strokeControls = $('stroke-controls');
+  syncers.push(() => {
+    strokeControls.hidden = settings.style === 'solid';
   });
   radios('image-method', 'image.method', (v) => {
     settings.image.method = v;

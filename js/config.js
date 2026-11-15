@@ -18,6 +18,7 @@ export const LIMITS = {
   count: { min: 1, max: 400, slider: 64 },
   imageCount: { min: 10, max: 12000 },
   frame: { min: 64, max: 7680 },
+  stroke: { min: 0.5, max: 20 },
 };
 
 export const BEHAVIOURS = {
@@ -44,7 +45,11 @@ export const DEFAULTS = {
   goo: 0,
   tempo: 0.5,
   colours: ['#B58400'],
+  // solid | outline | mixed ("One solid": the nucleus filled, the rest outlined)
   style: 'solid',
+  // Outline stroke, in frame pixels (the same number Figma shows for the
+  // exported SVG). pattern: line | dots.
+  stroke: { width: 2, pattern: 'line' },
   anchor: { x: 0.5, y: 0.5 },
   image: {
     count: 3000,

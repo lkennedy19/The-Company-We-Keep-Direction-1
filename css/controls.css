@@ -131,6 +131,12 @@
   grid-template-columns: minmax(0, 1fr);
 }
 
+/* A group of controls that shows and hides together. */
+.stack {
+  display: grid;
+  gap: var(--space-3);
+}
+
 .pair {
   display: grid;
   grid-template-columns: 1fr 1fr;

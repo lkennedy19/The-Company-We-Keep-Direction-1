@@ -8,12 +8,13 @@ import { bridgeGeometry } from './bridge.js';
 
 // How far up each circle a goo neck attaches at its fullest (0–1).
 const NECK = 0.5;
+// Dotted outlines: centre-to-centre spacing of the dots, × stroke width.
+const DOT_GAP = 2.75;
 
 export function buildScene(world) {
   const s = world.settings;
-  const minDim = world.minDim();
   const groups = new Map();
-  const dotted = [];
+  const outlines = new Map();
   const info = new Map();
 
   // Two layers: "under" holds cells sliding beneath another (being absorbed,
@@ -35,7 +36,7 @@ export function buildScene(world) {
     const solid = s.style === 'solid' || (s.style === 'mixed' && c === world.nucleus);
     const circle = { x: c.x, y: c.y, r: c.r, hex };
     if (solid) groupFor(hex, isUnder(world, c)).circles.push(circle);
-    else dotted.push(circle);
+    else outlineFor(outlines, hex).circles.push(circle);
     info.set(c, { hex, solid });
   }
 
@@ -46,9 +47,27 @@ export function buildScene(world) {
     height: world.frameH,
     background: FRAME_BACKGROUND,
     groups: orderGroups(groups),
-    dotted,
-    dot: { size: Math.max(2, minDim * 0.0042), gap: minDim * 0.0115 },
+    outlines: orderGroups(outlines),
+    stroke: strokeFor(s.stroke),
   };
+}
+
+// Outlined circles, one group per colour so each colour strokes in one pass.
+function outlineFor(outlines, hex) {
+  let group = outlines.get(hex);
+  if (!group) {
+    group = { hex, under: false, circles: [] };
+    outlines.set(hex, group);
+  }
+  return group;
+}
+
+// Stroke width is in frame pixels. Dots are round dashes of that width,
+// spaced at the same ratio the original dotted style used.
+function strokeFor(stroke) {
+  const width = Math.max(0.1, stroke.width);
+  const dotted = stroke.pattern === 'dots';
+  return { width, dotted, gap: width * DOT_GAP };
 }
 
 function isUnder(world, cell) {
@@ -114,7 +133,8 @@ function clockwise(a, b, c) {
 }
 
 // The under layer first, then brand colours in palette order; in-between
-// colours (cells easing to a new colour) draw last.
+// colours (cells easing to a new colour) draw last. Used for fills and
+// outlines alike.
 function orderGroups(groups) {
   return [...groups.values()].sort(
     (p, q) => Number(q.under) - Number(p.under) || rank(p.hex) - rank(q.hex) || (p.hex < q.hex ? -1 : 1),

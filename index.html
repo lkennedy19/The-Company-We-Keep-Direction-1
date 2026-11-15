@@ -64,8 +64,18 @@
         <div class="swatches" id="swatches" role="group" aria-label="Colours in use"></div>
         <div class="segmented" role="radiogroup" aria-label="Circle style">
           <label><input type="radio" name="style" value="solid"><span>Solid</span></label>
-          <label><input type="radio" name="style" value="dotted"><span>Dotted</span></label>
+          <label><input type="radio" name="style" value="outline"><span>Outline</span></label>
           <label><input type="radio" name="style" value="mixed"><span>One solid</span></label>
+        </div>
+        <div class="stack" id="stroke-controls">
+          <div class="field">
+            <label for="stroke-width">Stroke width</label><output data-for="stroke.width"></output>
+            <input class="range" id="stroke-width" type="range" min="0.5" max="20" step="0.25" data-setting="stroke.width" data-format="px">
+          </div>
+          <div class="segmented" role="radiogroup" aria-label="Outline line">
+            <label><input type="radio" name="stroke-pattern" value="line"><span>Line</span></label>
+            <label><input type="radio" name="stroke-pattern" value="dots"><span>Dotted</span></label>
+          </div>
         </div>
         <div class="row">
           <button class="btn" id="shuffle-btn" type="button">Shuffle colours</button>

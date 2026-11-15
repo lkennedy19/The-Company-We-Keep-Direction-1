@@ -392,7 +392,9 @@ function normalise(s) {
   if (!BEHAVIOURS[s.behaviour]) s.behaviour = 'fuse';
   s.count = clampInt(s.count, LIMITS.count.min, LIMITS.count.max);
   s.image.count = clampInt(s.image.count, LIMITS.imageCount.min, LIMITS.imageCount.max);
-  if (!['solid', 'dotted', 'mixed'].includes(s.style)) s.style = 'solid';
+  if (!['solid', 'outline', 'mixed'].includes(s.style)) s.style = 'solid';
+  if (!['line', 'dots'].includes(s.stroke.pattern)) s.stroke.pattern = 'line';
+  s.stroke.width = Math.min(LIMITS.stroke.max, Math.max(LIMITS.stroke.min, s.stroke.width || 2));
   if (![30, 60].includes(s.export.fps)) s.export.fps = 60;
 }
 

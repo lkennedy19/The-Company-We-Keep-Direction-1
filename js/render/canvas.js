@@ -19,19 +19,8 @@ export function drawScene(ctx, scene, { transparent = false, ghost = null } = {}
     ctx.restore();
   }
 
-  if (scene.dotted.length) {
-    ctx.save();
-    ctx.lineCap = 'round';
-    ctx.lineWidth = scene.dot.size;
-    for (const c of scene.dotted) {
-      ctx.strokeStyle = c.hex;
-      ctx.setLineDash([0, dotStep(c.r, scene.dot.gap)]);
-      ctx.beginPath();
-      ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
+  // Outlines sit under the fills, so "One solid" keeps its nucleus clean.
+  if (scene.outlines.length) drawOutlines(ctx, scene);
 
   // One path per colour: circles and necks share a winding direction, so a
   // single nonzero fill unions them into smooth blobs.
@@ -51,4 +40,33 @@ export function drawScene(ctx, scene, { transparent = false, ghost = null } = {}
     ctx.fillStyle = group.hex;
     ctx.fill('nonzero');
   }
+}
+
+// A continuous line strokes each colour as one path; dots need their own
+// dash per circle so every ring closes without a seam.
+function drawOutlines(ctx, scene) {
+  const { width, dotted, gap } = scene.stroke;
+  ctx.save();
+  ctx.lineWidth = width;
+  ctx.lineCap = dotted ? 'round' : 'butt';
+  for (const group of scene.outlines) {
+    ctx.strokeStyle = group.hex;
+    if (dotted) {
+      for (const c of group.circles) {
+        ctx.setLineDash([0, dotStep(c.r, gap)]);
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    } else {
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      for (const c of group.circles) {
+        ctx.moveTo(c.x + c.r, c.y);
+        ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+      }
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
 }

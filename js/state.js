@@ -33,9 +33,12 @@ export function saveSettings(settings) {
 
 // Image settings saved before the halftone method existed (they have
 // `sizing` instead of `method`) were tuned for even-sized dots and make the
-// halftone look weak, so they start fresh; everything else is kept.
+// halftone look weak, so they start fresh. The old "dotted" style is now the
+// outline style (drawn as a continuous line by default); everything else is
+// kept.
 function upgrade(stored) {
   if (stored && stored.image && !('method' in stored.image)) delete stored.image;
+  if (stored && stored.style === 'dotted') stored.style = 'outline';
   return stored;
 }
 
