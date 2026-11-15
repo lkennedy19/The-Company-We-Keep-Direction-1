@@ -11,7 +11,7 @@ A browser tool for exploring the identity as a system of circles "under a micros
 - 🟡 Frame size: presets (16:9, 4K, 1:1, 4:5, 9:16) and custom W × H. Background fixed at `#F2F2ED`.
 - 🟡 Circle count from 1 upward (slider to 64, typed values up to 400), every circle the same size by default.
 - 🟡 Organic transitions: adding a circle makes a cell divide (it stretches, pinches and separates); removing one makes two neighbours fuse. Big jumps cascade like a chain reaction rather than happening all at once.
-- 🟡 Colour: `#B58400`, `#D4B3FF`, `#EA5138` as single colour or a mix, plus click-to-recolour. Solid, dotted outline, or "one solid" (the Concept Illustration look).
+- 🟡 Colour: the brand palette as single colour or a mix (now the 13-colour D1 palette, see round 3), plus click-to-recolour. Solid, dotted outline, or "one solid" (the Concept Illustration look).
 - 🟡 Behaviours: Fuse (cluster), Disperse (spread across the frame), Magnet (gather around one nucleus), Image.
 - 🟡 Image → circles: upload or drop an image; weighted Voronoi stippling places the circles organically, and the circle count sets the detail. Contrast, cutoff (clears a coloured background behind a logo), invert, even or tone-based sizing.
 - 🟡 MP4 export: live recording of whatever happens on stage, plus offline-rendered count sequences (e.g. 1 → 22 → 1) at an exact frame rate.
@@ -56,4 +56,6 @@ Proposals from the RGD Branding Awards reference (Rethink): what that system doe
 - **MP4 in Firefox** — MP4 export depends on WebCodecs H.264 encoding (Chrome, Edge, Safari). Where H.264 isn't available the tool falls back to VP9-in-MP4, which QuickTime can't open.
 - **Colour from image** — in Image mode, pick each circle's colour from the nearest palette colour in the source image instead of the colour controls.
 - **Poke / stir** — let the pointer push cells around like a needle under the microscope.
+- **Click-to-recolour with 13 colours** — clicking a circle steps it through the whole palette (`cycleColour` in `js/sim/world.js`), so reaching a colour can take up to 12 clicks. Consider cycling through only the colours in use when two or more are selected.
+- **Light palette colours on the fixed background** — `#F2F2ED` is both the frame background and a palette colour, and `#FFFFFF` and the tints barely show on it. They work as outlines or with a transparent export; a background choice from the palette (Phase 2 "Reversed colour") would make them usable in the frame.
 - **Uploaded image persistence** — an uploaded image is held in memory only; reloading the page falls back to the built-in sample.

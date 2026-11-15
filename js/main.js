@@ -1,7 +1,7 @@
 // Entry point: wires settings, the cell world, the stage, the panel, the
 // image lab and the exporters together, and runs the animation loop.
 
-import { LIMITS, PALETTE, BEHAVIOURS, FRAME_PRESETS } from './config.js';
+import { LIMITS, PALETTE, BEHAVIOURS, FRAME_PRESETS, DEFAULTS } from './config.js';
 import { loadSettings, saveSettings } from './state.js';
 import { World } from './sim/world.js';
 import { createStage } from './ui/stage.js';
@@ -388,7 +388,7 @@ function normalise(s) {
   s.frame.w = even(s.frame.w);
   s.frame.h = even(s.frame.h);
   s.colours = PALETTE.filter((c) => s.colours.includes(c));
-  if (!s.colours.length) s.colours = [PALETTE[0]];
+  if (!s.colours.length) s.colours = DEFAULTS.colours.slice();
   if (!BEHAVIOURS[s.behaviour]) s.behaviour = 'fuse';
   s.count = clampInt(s.count, LIMITS.count.min, LIMITS.count.max);
   s.image.count = clampInt(s.image.count, LIMITS.imageCount.min, LIMITS.imageCount.max);

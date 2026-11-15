@@ -128,7 +128,7 @@ Before making **any** change to this codebase:
   size: 0.8,                        // lone-circle diameter as a fraction of the frame's short side
   shrink: 0.5,                      // radius ∝ count^-shrink (0 = constant size, 0.5 = area kept)
   spacing: 0, variety: 0, life: 0.35, goo: 0, tempo: 0.5,
-  colours: ['#B58400'],             // subset of PALETTE, palette order, never empty
+  colours: ['#FF7537'],             // subset of PALETTE, palette order, never empty
   style: 'solid',                   // solid | outline | mixed ("One solid": the nucleus filled, the rest outlined)
   stroke: { width: 2, pattern: 'line' }, // outline stroke in frame px (what Figma shows); pattern: line | dots
   anchor: { x: 0.5, y: 0.5 },       // normalised centre the cells gather around
@@ -139,7 +139,7 @@ Before making **any** change to this codebase:
 }
 ```
 
-**Palette and background** are fixed brand values in `js/config.js`: `PALETTE = ['#B58400', '#D4B3FF', '#EA5138']`, `FRAME_BACKGROUND = '#F2F2ED'`. Change them there only.
+**Palette and background** are fixed brand values in `js/config.js`. `PALETTE_GROUPS` holds the D1 Colour Palette sheet's exact hex values in the sheet's order (neutrals `#212121 #D2CCBE #F2F2ED #FFFFFF`, tints `#E5ECF3 #EDEDBF #F2E9F2`, accents `#0000FF #FFB6FF #C9AAED #FF7537 #7A7900 #EFD000`); `PALETTE` is the flat list. `FRAME_BACKGROUND = '#F2F2ED'`. Change them there only.
 
 **Image targets** (from `image-lab.js` to `world.setImage`): `{ aspect, targets: [{ u, v, rho, area, rn }] }`. `u`/`v` are 0–1 positions in the image, `rho` is the ink under the point, `area` is its Voronoi cell size in density-map pixels, and `rn` is the radius as a fraction of the image width. The world places them through `world.imageRect` (contain-fit × `image.scale`, centred on the anchor), so moving the anchor or changing the scale needs no re-stipple. Dot size rewrites `rn` in place; count, method, levels, contrast, midtones, cutoff and invert re-stipple (main.js `RESTIPPLE`).
 
@@ -178,5 +178,5 @@ Not deployed yet (see ROADMAP backlog). It's a static site with **no build step*
 ⚠️ **No design system page has been set up yet** — flagged to Liam when the Circle Lab UI was built; ask before creating one.
 
 Two separate visual layers, deliberately kept apart:
-- **The frame (the work itself):** background `#F2F2ED` and the palette `#B58400`, `#D4B3FF`, `#EA5138`, defined in `js/config.js`. Never themed, never touched by UI tokens.
-- **The tool's UI:** tokens in `css/tokens.css` (light values on `:root`, dark values under `prefers-color-scheme: dark` and `[data-theme="dark"]`). Warm greys biased toward the frame background; ink-coloured selected states so brand colours only ever appear as content. Type: Instrument Sans for UI text, Geist Mono for readouts, labels and numbers (Google Fonts, with system fallbacks). Shapes echo the identity: pill buttons, round slider thumbs, circular swatches.
+- **The frame (the work itself):** background `#F2F2ED` and the 13-colour D1 palette (`PALETTE_GROUPS`), defined in `js/config.js`. Never themed, never touched by UI tokens.
+- **The tool's UI:** tokens in `css/tokens.css` (light values on `:root`, dark values under `prefers-color-scheme: dark` and `[data-theme="dark"]`). Warm greys biased toward the frame background; ink-coloured selected states so brand colours only ever appear as content. Type: Instrument Sans for UI text, Geist Mono for readouts, labels and numbers (Google Fonts, with system fallbacks). Shapes echo the identity: pill buttons, round slider thumbs, circular swatches (one row per palette group, 32px chips in 40px touch targets, a `--chip-edge` hairline so light chips and `#212121` stay visible in either theme; the hex values in use are listed underneath).

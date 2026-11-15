@@ -278,38 +278,43 @@
 
 /* --- Colour swatches ---------------------------------------------------------- */
 
+/* Rows of chips, one per palette group. Each button is a 40px touch target
+   around a 32px chip; the hairline edge keeps light chips visible on a light
+   panel and #212121 visible on a dark one. */
+.palette {
+  display: grid;
+  gap: var(--space-1);
+}
+
 .swatches {
   display: flex;
-  gap: var(--space-3);
+  flex-wrap: wrap;
+  gap: var(--space-1);
 }
 
 .swatch {
   display: grid;
-  justify-items: center;
-  gap: var(--space-1);
+  place-items: center;
+  width: 40px;
+  height: 40px;
   padding: 0;
   border: 0;
+  border-radius: 50%;
   background: none;
-  color: var(--ink-soft);
-  font: 400 var(--text-xs) var(--font-mono);
   cursor: pointer;
 }
 
 .swatch__chip {
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: var(--chip);
-  box-shadow: 0 0 0 3px var(--panel), 0 0 0 4px transparent;
+  box-shadow: inset 0 0 0 1px var(--chip-edge), 0 0 0 3px var(--panel), 0 0 0 4px transparent;
   transition: box-shadow 0.15s ease;
 }
 
-.swatch[aria-pressed="true"] {
-  color: var(--ink);
-}
-
 .swatch[aria-pressed="true"] .swatch__chip {
-  box-shadow: 0 0 0 3px var(--panel), 0 0 0 4px var(--ink);
+  box-shadow: inset 0 0 0 1px var(--chip-edge), 0 0 0 3px var(--panel), 0 0 0 4px var(--ink);
 }
 
 /* --- Progress ---------------------------------------------------------------- */

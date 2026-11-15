@@ -3,7 +3,7 @@
 // (radios, swatches, frame size, sequence, image detail) are wired by hand.
 // `actions` (from main.js) handles side effects such as re-stippling.
 
-import { PALETTE, FRAME_PRESETS, BEHAVIOURS, LIMITS } from '../config.js';
+import { PALETTE, PALETTE_GROUPS, FRAME_PRESETS, BEHAVIOURS, LIMITS } from '../config.js';
 
 const FORMATS = {
   pct: (v) => `${Math.round(v * 100)}%`,
@@ -108,13 +108,24 @@ export function bindPanel(settings, actions) {
   });
 
   // --- colour swatches --------------------------------------------------------
+  // One row per palette group (neutrals, tints, accents). Chips carry no
+  // label; the hex values in use are listed underneath.
   const swatches = $('swatches');
-  for (const hex of PALETTE) {
+  for (const group of PALETTE_GROUPS) {
+    const row = document.createElement('div');
+    row.className = 'swatches';
+    row.setAttribute('role', 'group');
+    row.setAttribute('aria-label', group.label);
+    for (const hex of group.colours) row.append(swatchButton(hex));
+    swatches.append(row);
+  }
+  function swatchButton(hex) {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'swatch';
     button.style.setProperty('--chip', hex);
-    button.innerHTML = `<span class="swatch__chip"></span><span>${hex}</span>`;
+    button.innerHTML = '<span class="swatch__chip"></span>';
+    button.title = hex;
     button.setAttribute('aria-label', `Use ${hex}`);
     button.addEventListener('click', () => {
       const on = settings.colours.includes(hex);
@@ -124,9 +135,13 @@ export function bindPanel(settings, actions) {
       actions.changed('colours');
       sync();
     });
-    swatches.append(button);
     syncers.push(() => button.setAttribute('aria-pressed', String(settings.colours.includes(hex))));
+    return button;
   }
+  const colourReadout = $('colour-readout');
+  syncers.push(() => {
+    colourReadout.textContent = settings.colours.join('  ·  ');
+  });
   $('shuffle-btn').addEventListener('click', () => actions.shuffleColours());
 
   // --- frame size ------------------------------------------------------------
