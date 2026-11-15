@@ -156,7 +156,9 @@ function setFrame(w, h) {
 async function loadImage(file) {
   try {
     const bitmap = await createImageBitmap(file);
-    $('image-name').textContent = file.name;
+    const name = $('image-name');
+    name.textContent = file.name;
+    name.title = file.name;
     await imageLab.setSource(bitmap, file.name);
     if (settings.behaviour !== 'image') setBehaviour('image');
     status.show(`Rendering ${file.name} in ${settings.image.count} circles`);

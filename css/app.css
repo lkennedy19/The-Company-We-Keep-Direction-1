@@ -196,8 +196,11 @@ body {
   padding-bottom: var(--space-5);
 }
 
+/* minmax(0, 1fr): a long, unbreakable line (an uploaded file's name) must
+   never widen the panel and force a sideways scroll. */
 .panel__section {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3);
   padding-block: var(--space-4) var(--space-5);
   border-top: 1px solid var(--line);
@@ -224,7 +227,9 @@ body {
   text-wrap: pretty;
 }
 
+/* Sits beside a button and takes the rest of the row, truncated. */
 .note--inline {
+  flex: 1 1 0;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -245,6 +250,7 @@ body {
   color: var(--on-ink);
   font-size: var(--text-sm);
   text-align: center;
+  overflow-wrap: anywhere;
   z-index: 20;
 }
 
